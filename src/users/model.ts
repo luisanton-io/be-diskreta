@@ -14,7 +14,7 @@ const UserSchema = new mongoose.Schema<UserDocument, UserModel>({
         type: String,
         required: true,
     },
-    pubkey: {
+    publicKey: {
         type: String,
         required: true
     },
