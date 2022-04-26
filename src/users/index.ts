@@ -3,10 +3,25 @@ import jwt from "jsonwebtoken"
 import User from "./model"
 import bcrypt from "bcrypt"
 import createHttpError from "http-errors"
+import { AES, enc } from "crypto-js"
+import { pki } from "node-forge"
 
 const usersRouter = express.Router()
 
+
+
 usersRouter
+    .get("/", async (req, res, next) => {
+        try {
+            const { nick } = req.query
+
+            const n = new RegExp("^" + nick, "i")
+            const users = await User.find(nick ? { nick: n } : {})
+            res.send(users)
+        } catch (error) {
+            next(error)
+        }
+    })
     .post("/", async (req, res, next) => {
         try {
             const password = await bcrypt.hash(req.body.password, 12)
@@ -15,7 +30,13 @@ usersRouter
                 password
             })
             await user.save()
-            const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET!)
+
+            const publicKey = pki.publicKeyFromPem(req.body.publicKey)
+
+            const plainToken = jwt.sign({ _id: user._id }, process.env.JWT_SECRET!)
+            const token = publicKey.encrypt(plainToken)
+
+            console.log(token, user)
 
             res.status(201).send({ token, user })
         } catch (error) {
@@ -24,12 +45,12 @@ usersRouter
     })
     .post("/session", async (req, res, next) => {
         try {
-            const { email, password } = req.body
+            const { nick, password } = req.body
 
-            if (!email || !password) {
+            if (!nick || !password) {
                 return next(createHttpError(400, "MISSING_CREDENTIALS"))
             }
-            const user = await User.findOne({ email })
+            const user = await User.findOne({ nick })
 
             if (!user || !(await user.checkPassword(password))) {
                 return res.status(401).json({
@@ -37,7 +58,10 @@ usersRouter
                 })
             }
 
-            const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET!)
+            const publicKey = pki.publicKeyFromPem(user.publicKey)
+
+            const plainToken = jwt.sign({ _id: user._id }, process.env.JWT_SECRET!)
+            const token = publicKey.encrypt(plainToken)
 
             res.status(200).send({ token, user })
         } catch (e) {
