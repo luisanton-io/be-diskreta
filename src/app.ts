@@ -16,10 +16,10 @@ const corsOptions: CorsOptions = {
     }
 }
 
-app.use(express.json())
-app.use(cors(corsOptions));
 
 const apiRouter = express.Router();
+apiRouter.use(express.json())
+apiRouter.use(cors(corsOptions));
 
 apiRouter.use('/users', usersRouter)
 
