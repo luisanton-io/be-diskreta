@@ -5,12 +5,23 @@ import bcrypt from "bcrypt"
 import createHttpError from "http-errors"
 import { AES, enc } from "crypto-js"
 import { pki } from "node-forge"
+import shared from "../shared"
 
 const usersRouter = express.Router()
 
 
 
 usersRouter
+    .get("/online", async (req, res, next) => {
+        const users = await User.find({ _id: shared.onlineUsers.map(u => u._id) })
+
+        console.log(shared.onlineUsers.map(u => u.sockets))
+        res.status(200).send(users)
+    })
+    .get("/queue", async (req, res, next) => {
+        console.log(shared.messageQueue)
+        res.status(204).send()
+    })
     .get("/", async (req, res, next) => {
         try {
             const { nick } = req.query
