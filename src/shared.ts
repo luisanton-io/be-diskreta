@@ -1,7 +1,7 @@
 import { Socket } from "socket.io";
 
 interface Shared {
-    onlineUsers: { _id: string, socket: Socket }[],
+    onlineUsers: { _id: string, sockets: Socket[] }[],
     messageQueue: Message[]
 }
 
