@@ -29,8 +29,8 @@ interface User {
 }
 
 interface Message {
-    sender: User["_id"]
-    to: User["_id"][]
+    sender: User
+    to: User[]
     chatId: string // calc as sha256([sender, ...to].sort().join())
     content: {
         text: string;
