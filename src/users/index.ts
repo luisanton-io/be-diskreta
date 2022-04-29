@@ -56,14 +56,14 @@ usersRouter
     })
     .post("/session", async (req, res, next) => {
         try {
-            const { nick, password } = req.body
+            const { nick, digest } = req.body
 
-            if (!nick || !password) {
+            if (!nick || !digest) {
                 return next(createHttpError(400, "MISSING_CREDENTIALS"))
             }
             const user = await User.findOne({ nick })
 
-            if (!user || !(await user.checkPassword(password))) {
+            if (!user || !(await user.checkDigest(digest))) {
                 return res.status(401).json({
                     error: "Invalid credentials"
                 })

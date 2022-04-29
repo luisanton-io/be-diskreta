@@ -2,7 +2,7 @@ import mongoose, { Document } from "mongoose"
 import bcrypt from "bcrypt"
 
 type UserDocument = User & Document & {
-    checkPassword(password: string): Promise<boolean>
+    checkDigest(password: string): Promise<boolean>
 }
 
 interface UserModel extends mongoose.Model<UserDocument> {
@@ -31,7 +31,7 @@ UserSchema.statics.findByCredentials = async function (nick: string, password: s
         return Promise.reject(new Error("User not found"))
     }
 
-    if (!(await user.checkPassword(password))) {
+    if (!(await user.checkDigest(password))) {
         return Promise.reject(new Error("Invalid credentials"))
     }
 
@@ -47,7 +47,7 @@ UserSchema.methods.toJSON = function () {
     return user
 }
 
-UserSchema.methods.checkPassword = function (password: string) {
+UserSchema.methods.checkDigest = function (password: string) {
     return bcrypt.compare(password, this.password)
 }
 
