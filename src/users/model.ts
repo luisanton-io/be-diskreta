@@ -1,5 +1,6 @@
 import mongoose, { Document } from "mongoose"
 import bcrypt from "bcrypt"
+import { pki } from "node-forge"
 
 type UserDocument = User & Document & {
     checkDigest(password: string): Promise<boolean>
@@ -18,9 +19,13 @@ const UserSchema = new mongoose.Schema<UserDocument, UserModel>({
         type: String,
         required: true
     },
-    password: {
+    digest: {
         type: String,
         required: true
+    },
+    refreshTokens: {
+        type: [String],
+        default: []
     }
 })
 
@@ -41,15 +46,27 @@ UserSchema.statics.findByCredentials = async function (nick: string, password: s
 UserSchema.methods.toJSON = function () {
     const user = this.toObject()
 
-    delete user.password
+    delete user.digest
     delete user.__v
+    delete user.refreshTokens
 
     return user
 }
 
-UserSchema.methods.checkDigest = function (password: string) {
-    return bcrypt.compare(password, this.password)
+UserSchema.methods.checkDigest = function (digest: string) {
+    return bcrypt.compare(digest, this.digest)
 }
+
+UserSchema.methods.encrypt = function (plain: string) {
+    const publicKey = pki.publicKeyFromPem(this.publicKey)
+    return publicKey.encrypt(plain)
+}
+
+// UserSchema.methods.verify = function (signed: string) {
+//     const publicKey = pki.publicKeyFromPem(this.publicKey)
+//     return publicKey.verify(signed)
+// }
+
 
 const User = mongoose.model("users", UserSchema)
 
