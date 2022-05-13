@@ -1,11 +1,11 @@
 import express from "express"
-import jwt from "jsonwebtoken"
 import User from "./model"
 import bcrypt from "bcrypt"
 import createHttpError from "http-errors"
 import { AES, enc } from "crypto-js"
-import { pki } from "node-forge"
+import { pki, util } from "node-forge"
 import shared from "../shared"
+import jwt from "../util/jwt"
 
 const usersRouter = express.Router()
 
@@ -24,35 +24,64 @@ usersRouter
     })
     .get("/", async (req, res, next) => {
         try {
-            const { nick } = req.query
+            const { nick: nickQuery, exact } = req.query
 
-            const n = new RegExp("^" + nick, "i")
-            const users = await User.find(nick ? { nick: n } : {})
-            res.send(users)
+            const nick = exact ? nickQuery : new RegExp("^" + nickQuery, "i")
+
+            const users = await User.find(nickQuery ? { nick } : {})
+
+            if (!users.length) {
+                return next(createHttpError(404, "User not found"))
+            }
+
+            res.send(exact ? users[0] : users)
         } catch (error) {
             next(error)
         }
     })
     .post("/", async (req, res, next) => {
         try {
-            const password = await bcrypt.hash(req.body.password, 12)
+            const digest = await bcrypt.hash(req.body.digest, 12)
             const user = new User({
                 ...req.body,
-                password
+                digest
             })
+
             await user.save()
 
-            const publicKey = pki.publicKeyFromPem(req.body.publicKey)
+            const [token, refreshToken] = [jwt.generateFor(user), jwt.generateRefreshFor(user)]
 
-            const plainToken = jwt.sign({ _id: user._id }, process.env.JWT_SECRET!)
-            const token = publicKey.encrypt(plainToken)
+            // console.table({ plainToken, plainRefreshToken })
 
-            console.log(token, user)
-
-            res.status(201).send({ token, user })
+            res.status(201).send({ user, token, refreshToken })
         } catch (error) {
             next(error)
         }
+    })
+    .put("/", async (req, res, next) => {
+        const { nick, digest, signedDigest } = req.body
+
+        if ([nick, digest, signedDigest].indexOf(undefined) > -1) {
+            return next(createHttpError(400, "Missing parameters"))
+        }
+
+        const user = await User.findOne({ nick })
+
+        if (!user) {
+            return next(createHttpError(404, "User not found"))
+        }
+
+        const publicKey = pki.publicKeyFromPem(user.publicKey)
+
+        if (publicKey.verify(util.decode64(digest), util.decode64(signedDigest))) {
+            user.digest = digest
+            await user.save()
+        }
+
+        const token = jwt.generateFor(user)
+
+        res.status(200).send({ user, token })
+
     })
     .post("/session", async (req, res, next) => {
         try {
@@ -71,8 +100,7 @@ usersRouter
 
             const publicKey = pki.publicKeyFromPem(user.publicKey)
 
-            const plainToken = jwt.sign({ _id: user._id }, process.env.JWT_SECRET!)
-            const token = publicKey.encrypt(plainToken)
+            const token = jwt.generateFor(user)
 
             res.status(200).send({ token, user })
         } catch (e) {
