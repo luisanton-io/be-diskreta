@@ -2,7 +2,8 @@ interface User {
     _id: string
     nick: string
     publicKey: string
-    password?: string
+    digest?: string,
+    refreshTokens: string[]
 }
 
 interface JWTPayload {
