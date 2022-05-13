@@ -74,7 +74,7 @@ usersRouter
         const publicKey = pki.publicKeyFromPem(user.publicKey)
 
         if (publicKey.verify(util.decode64(digest), util.decode64(signedDigest))) {
-            user.digest = digest
+            user.digest = await bcrypt.hash(digest, 12)
             await user.save()
         }
 
