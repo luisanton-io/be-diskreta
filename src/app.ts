@@ -23,6 +23,10 @@ apiRouter.use(cors(corsOptions));
 
 apiRouter.use('/users', usersRouter)
 
+apiRouter.get('/test', (req, res) => {
+    res.status(200).send({ message: "Hello, World!" })
+})
+
 app.use('/api', apiRouter)
 
 app.use(genericErrorHandler)
