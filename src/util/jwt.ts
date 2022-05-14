@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken'
 import { pki, util } from 'node-forge'
 import { Document } from "mongoose"
 
-export default new class {
+class JWT {
 
     private _generate = (user: User, secret: string = process.env.JWT_SECRET!, expiresIn: string = '2h') => {
         const publicKey = pki.publicKeyFromPem(user.publicKey)
@@ -24,3 +24,5 @@ export default new class {
     }
 
 }
+
+export default new JWT()

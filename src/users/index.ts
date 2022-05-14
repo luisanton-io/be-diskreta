@@ -1,11 +1,10 @@
-import express from "express"
-import User from "./model"
 import bcrypt from "bcrypt"
+import express from "express"
 import createHttpError from "http-errors"
-import { AES, enc } from "crypto-js"
 import { pki, util } from "node-forge"
 import shared from "../shared"
 import jwt from "../util/jwt"
+import User from "./model"
 
 const usersRouter = express.Router()
 
@@ -30,7 +29,7 @@ usersRouter
 
             const users = await User.find(nickQuery ? { nick } : {})
 
-            if (!users.length) {
+            if (!users.length && exact) {
                 return next(createHttpError(404, "User not found"))
             }
 
@@ -97,8 +96,6 @@ usersRouter
                     error: "Invalid credentials"
                 })
             }
-
-            const publicKey = pki.publicKeyFromPem(user.publicKey)
 
             const token = jwt.generateFor(user)
 
