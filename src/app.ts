@@ -27,8 +27,9 @@ apiRouter.get('/test', (req, res) => {
     res.status(200).send({ message: "Hello, World!" })
 })
 
+apiRouter.use(genericErrorHandler)
+
 app.use('/api', apiRouter)
 
-app.use(genericErrorHandler)
 
 export default app
