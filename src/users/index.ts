@@ -10,7 +10,7 @@ import User from "./model"
 const usersRouter = express.Router()
 
 usersRouter
-    .get("/online", jwtGuard, async (req, res, next) => {
+    .get("/online", async (req, res, next) => {
         const users = await User.find({ _id: shared.onlineUsers.map(u => u._id) })
 
         console.log(shared.onlineUsers.map(u => u.sockets))
