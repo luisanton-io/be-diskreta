@@ -20,7 +20,7 @@ usersRouter
         console.log(shared.messageQueue)
         res.status(204).send()
     })
-    .get("/", jwtGuard, async (req, res, next) => {
+    .get("/", async (req, res, next) => {
         try {
             const { nick: nickQuery, exact } = req.query
 
@@ -58,9 +58,11 @@ usersRouter
         try {
             const { refreshToken: currentRefreshToken } = req.body
 
-            const user = await User.findOne({ refreshToken: currentRefreshToken })
+            const { _id } = jwt.verify(currentRefreshToken, process.env.JWT_SECRET!) as { _id: string }
 
-            if (!user) {
+            const user = await User.findById(_id)
+
+            if (!user || !user.refreshTokens.includes(currentRefreshToken)) {
                 return next(createHttpError(401, "Invalid refresh token"))
             }
 
@@ -72,7 +74,6 @@ usersRouter
 
             const { token, refreshToken } = jwt.generatePairFor(user)
 
-            // console.table({ plainToken, plainRefreshToken })
 
             res.status(201).send({ user, token, refreshToken })
         } catch (error) {
@@ -115,7 +116,7 @@ usersRouter
 
             if (!user || !(await user.checkDigest(digest))) {
                 return res.status(401).json({
-                    error: "Invalid credentials"
+                    error: "Wrong username or password."
                 })
             }
 
