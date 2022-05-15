@@ -1,17 +1,16 @@
 import bcrypt from "bcrypt"
-import express from "express"
+import express, { RequestHandler } from "express"
 import createHttpError from "http-errors"
 import { pki, util } from "node-forge"
+import { jwtGuard } from "../middlewares/jwtGuard"
 import shared from "../shared"
 import jwt from "../util/jwt"
 import User from "./model"
 
 const usersRouter = express.Router()
 
-
-
 usersRouter
-    .get("/online", async (req, res, next) => {
+    .get("/online", jwtGuard, async (req, res, next) => {
         const users = await User.find({ _id: shared.onlineUsers.map(u => u._id) })
 
         console.log(shared.onlineUsers.map(u => u.sockets))
@@ -21,13 +20,13 @@ usersRouter
         console.log(shared.messageQueue)
         res.status(204).send()
     })
-    .get("/", async (req, res, next) => {
+    .get("/", jwtGuard, async (req, res, next) => {
         try {
             const { nick: nickQuery, exact } = req.query
 
             const nick = exact ? nickQuery : new RegExp("^" + nickQuery, "i")
 
-            const users = await User.find(nickQuery ? { nick } : {})
+            const users = await User.find(nickQuery ? { $and: [{ nick }, { $not: { _id: req.user } }] } : {})
 
             if (!users.length && exact) {
                 return next(createHttpError(404, "User not found"))
@@ -48,7 +47,30 @@ usersRouter
 
             await user.save()
 
-            const [token, refreshToken] = [jwt.generateFor(user), jwt.generateRefreshFor(user)]
+            const { token, refreshToken } = jwt.generatePairFor(user)
+
+            res.status(201).send({ user, token, refreshToken })
+        } catch (error) {
+            next(error)
+        }
+    })
+    .post("/refreshToken", async (req, res, next) => {
+        try {
+            const { refreshToken: currentRefreshToken } = req.body
+
+            const user = await User.findOne({ refreshToken: currentRefreshToken })
+
+            if (!user) {
+                return next(createHttpError(401, "Invalid refresh token"))
+            }
+
+            await user.update({
+                $pull: {
+                    refreshToken: currentRefreshToken
+                }
+            })
+
+            const { token, refreshToken } = jwt.generatePairFor(user)
 
             // console.table({ plainToken, plainRefreshToken })
 
@@ -77,9 +99,9 @@ usersRouter
             await user.save()
         }
 
-        const token = jwt.generateFor(user)
+        const { token, refreshToken } = jwt.generatePairFor(user)
 
-        res.status(200).send({ user, token })
+        res.status(200).send({ user, token, refreshToken })
 
     })
     .post("/session", async (req, res, next) => {
@@ -97,9 +119,24 @@ usersRouter
                 })
             }
 
-            const token = jwt.generateFor(user)
+            const { token, refreshToken } = jwt.generatePairFor(user)
 
-            res.status(200).send({ token, user })
+            res.status(200).send({ user, token, refreshToken })
+        } catch (e) {
+            next(e)
+        }
+    })
+    .delete("/me", jwtGuard, async (req, res, next) => {
+        try {
+            const user = await User.findById(req.user)
+
+            if (!user) {
+                return res.status(404).send({ error: "This user does not exist." })
+            }
+
+            await user.remove()
+
+            res.status(204).send()
         } catch (e) {
             next(e)
         }

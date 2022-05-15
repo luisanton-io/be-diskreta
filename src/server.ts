@@ -1,12 +1,28 @@
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import jwt from "jsonwebtoken"
+import jwt from "./util/jwt";
 import app from "./app";
 import shared from "./shared";
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, { /* options */ });
+
+io.use((socket, next) => {
+    try {
+
+        const token = socket.handshake.auth.token
+        const { _id } = jwt.verify(token, process.env.JWT_SECRET!) as { _id: string }
+
+        if (!_id) throw new Error()
+
+        next()
+    } catch (error) {
+        socket.emit("jwt-expired")
+        socket.disconnect()
+    }
+
+})
 
 io.on("connection", socket => {
     console.log(socket.id)
@@ -25,23 +41,21 @@ io.on("connection", socket => {
 
         console.table({ _id })
 
-        socket.emit('dequeue', shared.messageQueue.filter(m => m.to.some(recipient => recipient._id === _id)))
-        shared.messageQueue = shared.messageQueue.filter(m => m.to.some(recipient => recipient._id !== _id))
+        socket.emit('dequeue', shared.messageQueue.filter(m => m.to._id === _id))
+        shared.messageQueue = shared.messageQueue.filter(m => m.to._id !== _id)
 
 
         socket.on("out-msg", (msg: Message) => {
             console.table({ 'Received message': msg.content.text })
 
-            for (const recipient of msg.to) {
-                const user = shared.onlineUsers.find(u => u._id === recipient._id)
+            const user = shared.onlineUsers.find(u => u._id === msg.to._id)
 
-                if (user) {
-                    for (const socket of user.sockets) {
-                        socket.emit("in-msg", msg)
-                    }
+            if (user) {
+                for (const socket of user.sockets) {
+                    socket.emit("in-msg", msg)
                 }
-                else shared.messageQueue.push(msg)
             }
+            else shared.messageQueue.push(msg)
         })
 
         socket.on('disconnect', () => {

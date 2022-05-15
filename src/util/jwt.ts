@@ -23,6 +23,14 @@ class JWT {
         return refreshToken
     }
 
+    public generatePairFor = (user: User & Document) => {
+        const [token, refreshToken] = [this.generateFor(user), this.generateRefreshFor(user)]
+
+        return { token, refreshToken }
+    }
+
+    public verify = jwt.verify
+
 }
 
 export default new JWT()
