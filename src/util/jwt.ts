@@ -4,7 +4,7 @@ import { Document } from "mongoose"
 
 class JWT {
 
-    private _generate = (user: User, secret: string = process.env.JWT_SECRET!, expiresIn: string = '2h') => {
+    private _generate = (user: User, secret: string = process.env.JWT_SECRET!, expiresIn: string = '15min') => {
         const publicKey = pki.publicKeyFromPem(user.publicKey)
         const plainToken = jwt.sign({ _id: user._id }, secret, { expiresIn })
         return util.encode64(publicKey.encrypt(plainToken))
