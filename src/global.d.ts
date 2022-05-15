@@ -31,7 +31,8 @@ interface User {
 
 interface Message {
     sender: User
-    to: User
+    to: User[] // all recipients list
+    for: User["_id"] // id of user whose public key was used to encrypt the message
     chatId: string // calc as sha256([sender, ...to].sort().join())
     content: {
         text: string;
