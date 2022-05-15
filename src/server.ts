@@ -19,7 +19,6 @@ io.use((socket, next) => {
         next()
     } catch (error) {
         socket.emit("jwt-expired")
-        socket.disconnect()
     }
 
 })
@@ -41,14 +40,14 @@ io.on("connection", socket => {
 
         console.table({ _id })
 
-        socket.emit('dequeue', shared.messageQueue.filter(m => m.to._id === _id))
-        shared.messageQueue = shared.messageQueue.filter(m => m.to._id !== _id)
+        socket.emit('dequeue', shared.messageQueue.filter(m => m.for === _id))
+        shared.messageQueue = shared.messageQueue.filter(m => m.for !== _id)
 
 
         socket.on("out-msg", (msg: Message) => {
-            console.table({ 'Received message': msg.content.text })
+            console.log({ 'Received message': msg })
 
-            const user = shared.onlineUsers.find(u => u._id === msg.to._id)
+            const user = shared.onlineUsers.find(u => u._id === msg.for)
 
             if (user) {
                 for (const socket of user.sockets) {
