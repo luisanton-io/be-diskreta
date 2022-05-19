@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import jwt from "./util/jwt";
 import app from "./app";
 import shared from "./shared";
+import User from "./users/model";
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, { /* options */ });
@@ -23,12 +24,16 @@ io.use((socket, next) => {
 
 })
 
-io.on("connection", socket => {
+io.on("connection", async socket => {
     console.log(socket.id)
     console.log(socket.handshake.auth)
 
     try {
         const { _id } = jwt.verify(socket.handshake.auth.token, process.env.JWT_SECRET!) as JWTPayload
+
+        const socketUser = await User.findById(_id)
+
+        if (!socketUser) throw new Error("User not found")
 
         const onlineUser = shared.onlineUsers.find(u => u._id === _id)
 
@@ -46,6 +51,8 @@ io.on("connection", socket => {
 
         socket.on("out-msg", (msg: Message) => {
             console.log({ 'Received message': msg })
+
+            msg.sender = socketUser.toJSON() // avoids a malicious user with a legit JWT token to impersonate another user.
 
             const user = shared.onlineUsers.find(u => u._id === msg.for)
 
