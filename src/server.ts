@@ -74,6 +74,10 @@ io.on("connection", socket => {
 
         })
 
+        socket.onAny((event, payload) => {
+            socket.emit("echo", { event, payload })
+        })
+
     } catch (error) {
         console.log(error)
     }
