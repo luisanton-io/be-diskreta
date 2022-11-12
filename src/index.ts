@@ -1,4 +1,3 @@
-process.env.TS_NODE_DEV && require("dotenv").config()
 import server from "./server"
 import mongoose from "mongoose"
 
