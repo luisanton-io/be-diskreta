@@ -5,6 +5,7 @@ import jwt from "./util/jwt";
 import app from "./app";
 import shared from "./shared";
 import User from "./users/model";
+import messageStatus from "./events/messageStatus";
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, { /* options */ });
@@ -45,12 +46,20 @@ io.on("connection", async socket => {
 
         console.table({ _id })
 
-        socket.emit('dequeue', shared.messageQueue.filter(m => m.for === _id))
-        shared.messageQueue = shared.messageQueue.filter(m => m.for !== _id)
+        const messageQueue = shared.messageQueue[_id] || []
+        const statusQueue = shared.statusQueue[_id] || []
 
+        socket.emit('dequeue', messageQueue, () => {
+            messageQueue.forEach(msg => messageStatus(msg, 'delivered'))
+            delete shared.messageQueue[_id]
+        })
+        socket.emit('dequeue-status', statusQueue, () => {
+            delete shared.statusQueue[_id]
+        })
 
-        socket.on("out-msg", (msg: Message) => {
+        socket.on("out-msg", (msg: Message, ack) => {
             console.log({ 'Received message': msg })
+            ack(msg.for)
 
             msg.sender = socketUser.toJSON() // avoids a malicious user with a legit JWT token to impersonate another user.
 
@@ -58,10 +67,15 @@ io.on("connection", async socket => {
 
             if (user) {
                 for (const socket of user.sockets) {
-                    socket.emit("in-msg", msg)
+                    socket.emit("in-msg", msg, () => {
+                        messageStatus(msg, 'delivered')
+                    })
                 }
             }
-            else shared.messageQueue.push(msg)
+            else {
+                (shared.messageQueue[msg.for] ||= []).push(msg)
+            }
+
         })
 
         socket.on('disconnect', () => {

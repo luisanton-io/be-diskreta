@@ -38,10 +38,20 @@ interface Message {
         text: string;
         media?: string
     }
-    timestamp: number
+    timestamp: number,
+    hash: string
 }
 
 interface Chat {
     messages: Message[];
     members: User[]
+}
+
+type MessageStatus = 'outgoing' | 'sent' | 'delivered' | 'read' | 'error'
+
+interface MessageStatusUpdate {
+    chatId: string,
+    hash: string,
+    recipientId: string,
+    status: MessageStatus
 }
