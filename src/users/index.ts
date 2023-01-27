@@ -11,13 +11,13 @@ const usersRouter = express.Router()
 
 usersRouter
     .get("/online", async (req, res, next) => {
-        const users = await User.find({ _id: shared.onlineUsers.map(u => u._id) })
+        const users = await User.find({ _id: Object.keys(shared.onlineUsers) })
 
-        console.log(shared.onlineUsers.map(u => u.sockets))
+        console.log(shared.onlineUsers)
         res.status(200).send(users)
     })
     .get("/queue", async (req, res, next) => {
-        console.log(shared.messageQueue)
+        console.log(shared.queues)
         res.status(204).send()
     })
     .get("/", async (req, res, next) => {

@@ -5,7 +5,11 @@ import usersRouter from "./users";
 
 const app = express();
 
-const whitelist = ['http://localhost:3000', 'https://diskreta.vercel.app']
+const whitelist = [
+    'http://localhost:3000',
+    'https://diskreta.vercel.app',
+    'http://prometheus.local:3000',
+]
 const corsOptions: CorsOptions = {
     origin: function (origin, callback) {
         if (!origin || whitelist.indexOf(origin) !== -1) {

@@ -3,7 +3,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import jwt from "./util/jwt";
 import app from "./app";
-import shared from "./shared";
+import shared, { emptyOnlineUserData, emptyQueue } from "./shared";
 import User from "./users/model";
 import messageStatus from "./events/messageStatus";
 
@@ -34,63 +34,66 @@ io.on("connection", async socket => {
 
         const socketUser = await User.findById(_id)
 
-        if (!socketUser) throw new Error("User not found")
+        if (!socketUser) throw new Error("User not found");
 
-        const onlineUser = shared.onlineUsers.find(u => u._id === _id)
-
-        if (onlineUser) {
-            onlineUser.sockets.push(socket)
-        } else {
-            shared.onlineUsers.push({ _id, sockets: [socket] })
-        }
+        (shared.onlineUsers[_id] ||= emptyOnlineUserData).sockets.push(socket)
 
         console.table({ _id })
 
-        const messageQueue = shared.messageQueue[_id] || []
-        const statusQueue = shared.statusQueue[_id] || []
-
-        socket.emit('dequeue', messageQueue, () => {
-            messageQueue.forEach(msg => messageStatus(msg, 'delivered'))
-            delete shared.messageQueue[_id]
-        })
-        socket.emit('dequeue-status', statusQueue, () => {
-            delete shared.statusQueue[_id]
+        shared.queues[_id] && socket.emit('dequeue', shared.queues[_id], () => {
+            const { messages } = shared.queues[_id]
+            messages.forEach(msg => messageStatus(msg, 'delivered'))
+            delete shared.queues[_id]
         })
 
-        socket.on("out-msg", (msg: Message, ack) => {
-            console.log({ 'Received message': msg })
-            ack(msg.for)
+        socket.on("out-msg", async (payload: OutgoingMessage, ack) => {
+            console.log({ 'Received message': payload })
 
-            msg.sender = socketUser.toJSON() // avoids a malicious user with a legit JWT token to impersonate another user.
+            const recipientId = payload.for
 
-            const user = shared.onlineUsers.find(u => u._id === msg.for)
-
-            if (user) {
-                for (const socket of user.sockets) {
-                    socket.emit("in-msg", msg, () => {
-                        messageStatus(msg, 'delivered')
-                    })
-                }
-            }
-            else {
-                (shared.messageQueue[msg.for] ||= []).push(msg)
+            const outgoingMessage: OutgoingMessageWithSender = {
+                ...payload,
+                sender: socketUser.toJSON() // avoids a malicious user with a legit JWT token to impersonate another user.
             }
 
+            const forwardingMessage: ReceivedMessage = {
+                ...outgoingMessage,
+                status: 'new'
+            }
+
+            const onlineRecipient = shared.onlineUsers[recipientId]
+
+            const deliverMessage = () => {
+                return !!onlineRecipient && Promise.any(onlineRecipient.sockets.map(socket =>
+                    new Promise<boolean>((resolve, reject) => {
+                        socket.emit("in-msg", forwardingMessage, (error: string) => {
+                            if (error) return console.log('in-msg ACK ERROR', reject(error))
+
+                            messageStatus(forwardingMessage, 'delivered')
+                            resolve(true)
+                        })
+                    })))
+            }
+
+            if (!await deliverMessage()) {
+                (shared.queues[recipientId] ||= emptyQueue).messages.push(forwardingMessage)
+            }
+
+            ack(recipientId)
+
+        })
+
+        socket.on("read-msg", (message: ReceivedMessage) => {
+            messageStatus(message, 'read')
         })
 
         socket.on('disconnect', () => {
-            let socketIx = 0
-            const onlineUserIx =
-                shared.onlineUsers.findIndex(u => {
-                    socketIx = u.sockets.findIndex(s => s.id === socket.id)
-                    return socketIx !== -1
-                })
-
-            const onlineUser = shared.onlineUsers[onlineUserIx]
-
-            if (onlineUser) {
-                onlineUser.sockets.splice(socketIx, 1)
-                !onlineUser.sockets.length && shared.onlineUsers.splice(onlineUserIx, 1)
+            console.log("disconnecting " + socketUser.nick)
+            console.log(shared.onlineUsers[_id]?.sockets.map(s => s.id))
+            if (shared.onlineUsers[_id].sockets.length === 1)
+                delete shared.onlineUsers[_id]
+            else {
+                shared.onlineUsers[_id].sockets = shared.onlineUsers[_id].sockets.filter(s => s.id !== socket.id)
             }
 
         })

@@ -42,16 +42,33 @@ interface Message {
     hash: string
 }
 
+interface ReceivedMessage extends Message {
+    status: ReceivedMessageStatus
+}
+interface OutgoingMessage extends Omit<Message, "sender"> {
+    for: string
+    // sender?: Message["sender"]
+}
+
+interface OutgoingMessageWithSender extends Omit<OutgoingMessage, "sender"> {
+    sender: Message["sender"]
+}
+interface SentMessage extends Message {
+    status: Record<User["_id"], SentMessageStatus>
+}
+
 interface Chat {
     messages: Message[];
     members: User[]
 }
 
-type MessageStatus = 'outgoing' | 'sent' | 'delivered' | 'read' | 'error'
+type OutgoingMessageStatus = 'outgoing' | 'sent' | 'delivered' | 'read' | 'error'
+
+type ReceivedMessageStatus = 'new' | 'read'
 
 interface MessageStatusUpdate {
     chatId: string,
     hash: string,
     recipientId: string,
-    status: MessageStatus
+    status: OutgoingMessageStatus
 }
