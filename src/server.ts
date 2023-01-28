@@ -3,7 +3,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import jwt from "./util/jwt";
 import app from "./app";
-import shared, { emptyOnlineUserData, emptyQueue } from "./shared";
+import shared, { emptyQueue } from "./shared";
 import User from "./users/model";
 import messageStatus from "./events/messageStatus";
 
@@ -36,7 +36,7 @@ io.on("connection", async socket => {
 
         if (!socketUser) throw new Error("User not found");
 
-        (shared.onlineUsers[_id] ||= emptyOnlineUserData).sockets.push(socket)
+        shared.onlineUsers[_id] = { socket }
 
         console.table({ _id })
 
@@ -63,17 +63,19 @@ io.on("connection", async socket => {
 
             const onlineRecipient = shared.onlineUsers[recipientId]
 
-            const deliverMessage = () => {
-                return !!onlineRecipient && Promise.any(onlineRecipient.sockets.map(socket =>
-                    new Promise<boolean>((resolve, reject) => {
-                        socket.emit("in-msg", forwardingMessage, (error: string) => {
-                            if (error) return console.log('in-msg ACK ERROR', reject(error))
+            const deliverMessage = () =>
+                !!onlineRecipient && new Promise<boolean>((resolve, reject) => {
+                    onlineRecipient.socket.emit("in-msg", forwardingMessage, (error: string) => {
+                        if (error) {
+                            console.log('in-msg ACK ERROR', error)
+                            return reject(false)
+                        }
 
-                            messageStatus(forwardingMessage, 'delivered')
-                            resolve(true)
-                        })
-                    })))
-            }
+                        messageStatus(outgoingMessage, 'delivered')
+                        resolve(true)
+                    })
+                })
+
 
             if (!await deliverMessage()) {
                 (shared.queues[recipientId] ||= emptyQueue).messages.push(forwardingMessage)
@@ -89,13 +91,7 @@ io.on("connection", async socket => {
 
         socket.on('disconnect', () => {
             console.log("disconnecting " + socketUser.nick)
-            console.log(shared.onlineUsers[_id]?.sockets.map(s => s.id))
-            if (shared.onlineUsers[_id].sockets.length === 1)
-                delete shared.onlineUsers[_id]
-            else {
-                shared.onlineUsers[_id].sockets = shared.onlineUsers[_id].sockets.filter(s => s.id !== socket.id)
-            }
-
+            delete shared.onlineUsers[_id]
         })
 
         socket.onAny((event, payload) => {

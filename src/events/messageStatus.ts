@@ -7,12 +7,11 @@ export default function messageStatus(msg: OutgoingMessageWithSender | ReceivedM
         recipientId: msg.for,
         status
     }
-    const sender = shared.onlineUsers[msg.sender._id.toString()]
-    const { sockets } = sender || {}
+    const { socket } = shared.onlineUsers[msg.sender._id.toString()] || {}
 
-    if (sockets) {
+    if (socket) {
         console.log(`Emitting message status update [${statusUpdate.status}] to sender (${msg.sender.nick})`)
-        sockets.forEach(s => s.emit('msg-status', statusUpdate))
+        socket.emit('msg-status', statusUpdate)
     } else {
         (shared.queues[msg.sender._id] ||= emptyQueue).status.push(statusUpdate)
     }

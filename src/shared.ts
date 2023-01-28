@@ -6,11 +6,7 @@ interface Queue {
 }
 
 interface OnlineUserData {
-    sockets: Socket[]
-}
-
-export const emptyOnlineUserData: OnlineUserData = {
-    sockets: []
+    socket: Socket
 }
 interface Shared {
     onlineUsers: Record<User["_id"], OnlineUserData>,
