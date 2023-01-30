@@ -13,7 +13,7 @@ const io = new Server(httpServer, { /* options */ });
 io.use((socket, next) => {
     try {
 
-        const token = socket.handshake.auth.token
+        const token = socket.handshake.auth.token || socket.handshake.headers.token
         const { _id } = jwt.verify(token, process.env.JWT_SECRET!) as { _id: string }
 
         if (!_id) throw new Error()

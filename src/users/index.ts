@@ -47,7 +47,7 @@ usersRouter
 
             await user.save()
 
-            const { token, refreshToken } = jwt.generatePairFor(user)
+            const { token, refreshToken } = await jwt.generatePairFor(user)
 
             res.status(201).send({ user, token, refreshToken })
         } catch (error) {
@@ -58,11 +58,11 @@ usersRouter
         try {
             const { refreshToken: currentRefreshToken } = req.body
 
-            const { _id } = jwt.verify(currentRefreshToken, process.env.JWT_SECRET!) as { _id: string }
+            const { _id } = jwt.verify(currentRefreshToken, process.env.JWT_REFRESH_SECRET!) as { _id: string }
 
             const user = await User.findById(_id)
 
-            if (!user || !user.refreshTokens.includes(currentRefreshToken)) {
+            if (!user || ![...user.refreshTokens].includes(currentRefreshToken)) {
                 return next(createHttpError(401, "Invalid refresh token"))
             }
 
@@ -72,7 +72,7 @@ usersRouter
                 }
             })
 
-            const { token, refreshToken } = jwt.generatePairFor(user)
+            const { token, refreshToken } = await jwt.generatePairFor(user)
 
 
             res.status(201).send({ user, token, refreshToken })
@@ -100,7 +100,7 @@ usersRouter
             await user.save()
         }
 
-        const { token, refreshToken } = jwt.generatePairFor(user)
+        const { token, refreshToken } = await jwt.generatePairFor(user)
 
         res.status(200).send({ user, token, refreshToken })
 
@@ -120,7 +120,7 @@ usersRouter
                 })
             }
 
-            const { token, refreshToken } = jwt.generatePairFor(user)
+            const { token, refreshToken } = await jwt.generatePairFor(user)
 
             res.status(200).send({ user, token, refreshToken })
         } catch (e) {
