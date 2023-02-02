@@ -1,11 +1,10 @@
-import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import jwt from "./util/jwt";
 import app from "./app";
-import shared, { emptyQueue } from "./shared";
-import User from "./users/model";
 import messageStatus from "./events/messageStatus";
+import shared, { makeEmptyQueue } from "./shared";
+import User from "./users/model";
+import jwt from "./util/jwt";
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, { /* options */ });
@@ -26,8 +25,6 @@ io.use((socket, next) => {
 })
 
 io.on("connection", async socket => {
-    console.log(socket.id)
-    console.log(socket.handshake.auth)
 
     try {
         const { _id } = jwt.verify(socket.handshake.auth.token, process.env.JWT_SECRET!) as JWTPayload
@@ -36,13 +33,20 @@ io.on("connection", async socket => {
 
         if (!socketUser) throw new Error("User not found");
 
+        console.log("Connected " + socketUser.nick)
+
+        shared.onlineUsers[_id]?.socket.disconnect()
+
         shared.onlineUsers[_id] = { socket }
 
-        console.table({ _id })
+        shared.queues[_id] && socket.emit('dequeue', shared.queues[_id], async () => {
 
-        shared.queues[_id] && socket.emit('dequeue', shared.queues[_id], () => {
-            const { messages } = shared.queues[_id]
-            messages.forEach(msg => messageStatus(msg, 'delivered'))
+            await Promise.all(
+                shared.queues[_id].messages.map(msg =>
+                    messageStatus(msg, 'delivered')
+                )
+            )
+
             delete shared.queues[_id]
         })
 
@@ -50,6 +54,8 @@ io.on("connection", async socket => {
             console.log({ 'Received message': payload })
 
             const recipientId = payload.for
+
+            ack(recipientId)
 
             const outgoingMessage: OutgoingMessageWithSender = {
                 ...payload,
@@ -65,28 +71,27 @@ io.on("connection", async socket => {
 
             const deliverMessage = () =>
                 !!onlineRecipient && new Promise<boolean>((resolve, reject) => {
-                    onlineRecipient.socket.emit("in-msg", forwardingMessage, (error: string) => {
+                    onlineRecipient.socket.emit("in-msg", forwardingMessage, async (msgack: string) => {
+                        const { hash, error } = JSON.parse(msgack) as MessageAck
                         if (error) {
                             console.log('in-msg ACK ERROR', error)
                             return reject(false)
                         }
 
-                        messageStatus(outgoingMessage, 'delivered')
+                        await messageStatus(outgoingMessage, 'delivered')
+                        console.log("received ack for ", hash)
                         resolve(true)
                     })
                 })
 
-
             if (!await deliverMessage()) {
-                (shared.queues[recipientId] ||= emptyQueue).messages.push(forwardingMessage)
+                (shared.queues[recipientId] ||= makeEmptyQueue()).messages.push(forwardingMessage);
             }
-
-            ack(recipientId)
 
         })
 
-        socket.on("read-msg", (message: ReceivedMessage) => {
-            messageStatus(message, 'read')
+        socket.on("read-msg", async (message: ReceivedMessage) => {
+            await messageStatus(message, 'read')
         })
 
         socket.on('disconnect', () => {

@@ -13,10 +13,10 @@ interface Shared {
     queues: Record<User["_id"], Queue>
 }
 
-export const emptyQueue: Queue = {
+export const makeEmptyQueue: () => Queue = () => ({
     messages: [],
     status: []
-}
+})
 
 const shared: Shared = {
     onlineUsers: {},

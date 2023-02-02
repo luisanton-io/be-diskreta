@@ -72,3 +72,8 @@ interface MessageStatusUpdate {
     recipientId: string,
     status: OutgoingMessageStatus
 }
+
+interface MessageAck {
+    error?: string
+    hash?: string
+}

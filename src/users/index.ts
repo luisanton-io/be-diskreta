@@ -6,6 +6,7 @@ import { jwtGuard } from "../middlewares/jwtGuard"
 import shared from "../shared"
 import jwt from "../util/jwt"
 import User from "./model"
+import { inspect } from 'util'
 
 const usersRouter = express.Router()
 
@@ -17,7 +18,11 @@ usersRouter
         res.status(200).send(users)
     })
     .get("/queue", async (req, res, next) => {
-        console.log(shared.queues)
+        // inspect(shared.queues)
+        console.log(JSON.stringify({
+            messages: Object.entries(shared.queues).map(([user, data]) => ({ [user]: data.messages.map(m => m.hash) })),
+            status: Object.entries(shared.queues).map(([user, data]) => ({ [user]: data.status.map(s => ({ hash: s.hash, status: s.status })) })),
+        }, null, 2))
         res.status(204).send()
     })
     .get("/", async (req, res, next) => {
