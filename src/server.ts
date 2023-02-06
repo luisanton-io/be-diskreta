@@ -7,7 +7,10 @@ import User from "./users/model";
 import jwt from "./util/jwt";
 
 const httpServer = createServer(app);
-const io = new Server(httpServer, { /* options */ });
+const io = new Server(httpServer, {
+    maxHttpBufferSize: 1e8,
+    pingTimeout: 60000
+});
 
 io.use((socket, next) => {
     try {
@@ -82,7 +85,7 @@ io.on("connection", async socket => {
                         console.log("received ack for ", hash)
                         resolve(true)
                     })
-                })
+                }).catch(console.error)
 
             if (!await deliverMessage()) {
                 (shared.queues[recipientId] ||= makeEmptyQueue()).messages.push(forwardingMessage);
