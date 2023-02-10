@@ -1,4 +1,5 @@
-import shared, { makeEmptyQueue } from "../shared"
+import shared, { Queues } from "../shared"
+import User from "../users/model"
 
 export default async function messageStatus(msg: OutgoingMessageWithSender | ReceivedMessage, status: OutgoingMessageStatus) {
     const statusUpdate: MessageStatusUpdate = {
@@ -24,6 +25,10 @@ export default async function messageStatus(msg: OutgoingMessageWithSender | Rec
             })
         }))) {
         // console.log("pushing to queue STATUS ", msg.hash, statusUpdate.status);
-        (shared.queues[msg.sender._id] ||= makeEmptyQueue()).status.push(statusUpdate)
+        const sender = await User.findById(msg.sender._id);
+        if (sender) {
+            (sender.queues as Queues).status.push(statusUpdate)
+            await sender.save()
+        }
     }
 }

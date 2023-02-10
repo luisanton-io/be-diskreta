@@ -1,6 +1,6 @@
 import { Socket } from "socket.io";
 
-interface Queue {
+export interface Queues {
     messages: Message[],
     status: MessageStatusUpdate[]
 }
@@ -10,17 +10,15 @@ interface OnlineUserData {
 }
 interface Shared {
     onlineUsers: Record<User["_id"], OnlineUserData>,
-    queues: Record<User["_id"], Queue>
 }
 
-export const makeEmptyQueue: () => Queue = () => ({
+export const makeEmptyQueues: () => Queues = () => ({
     messages: [],
     status: []
 })
 
 const shared: Shared = {
-    onlineUsers: {},
-    queues: {}
+    onlineUsers: {}
 };
 
 export default shared

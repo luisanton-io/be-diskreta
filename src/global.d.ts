@@ -3,7 +3,8 @@ interface User {
     nick: string
     publicKey: string
     digest?: string,
-    refreshTokens: string[]
+    refreshTokens: string[],
+    queues: Object
 }
 
 interface JWTPayload {
@@ -23,10 +24,10 @@ interface LoginResponse {
     user: User
 }
 
-interface User {
-    _id: string
-    username: string
-    publicKey: string
+interface Media {
+    type: 'image' | 'video' | 'audio' | 'file'
+    data: string
+    encryptionKey: string  // AES-256
 }
 
 interface Message {
@@ -36,7 +37,7 @@ interface Message {
     chatId: string // calc as sha256([sender, ...to].sort().join())
     content: {
         text: string;
-        media?: string
+        media?: Media
     }
     timestamp: number,
     hash: string

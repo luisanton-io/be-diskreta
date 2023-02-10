@@ -2,7 +2,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import app from "./app";
 import messageStatus from "./events/messageStatus";
-import shared, { makeEmptyQueue } from "./shared";
+import shared, { makeEmptyQueues, Queues } from "./shared";
 import User from "./users/model";
 import jwt from "./util/jwt";
 
@@ -40,17 +40,19 @@ io.on("connection", async socket => {
 
         shared.onlineUsers[_id]?.socket.disconnect()
 
-        shared.onlineUsers[_id] = { socket }
+        shared.onlineUsers[_id] = { socket };
 
-        shared.queues[_id] && socket.emit('dequeue', shared.queues[_id], async () => {
+        socket.emit('dequeue', socketUser.queues, async () => {
 
             await Promise.all(
-                shared.queues[_id].messages.map(msg =>
+                (socketUser.queues as Queues).messages.map(msg =>
                     messageStatus(msg, 'delivered')
                 )
             )
 
-            delete shared.queues[_id]
+            await socketUser.updateOne({
+                queues: makeEmptyQueues()
+            })
         })
 
         socket.on("out-msg", async (payload: OutgoingMessage, ack) => {
@@ -62,7 +64,7 @@ io.on("connection", async socket => {
 
             const outgoingMessage: OutgoingMessageWithSender = {
                 ...payload,
-                sender: socketUser.toJSON() // avoids a malicious user with a legit JWT token to impersonate another user.
+                sender: socketUser.toJSON() as User // avoids a malicious user with a legit JWT token to impersonate another user.
             }
 
             const forwardingMessage: ReceivedMessage = {
@@ -88,7 +90,21 @@ io.on("connection", async socket => {
                 }).catch(console.error)
 
             if (!await deliverMessage()) {
-                (shared.queues[recipientId] ||= makeEmptyQueue()).messages.push(forwardingMessage);
+                try {
+                    const recipient = await User.findById(recipientId)
+                    if (!recipient) return // should emit error
+
+                    await recipient.updateOne({
+                        $push: {
+                            "queues.messages": forwardingMessage
+                        }
+                    })
+                    // (recipient.queues as Queues).messages.push(forwardingMessage);
+                    // console.log(recipient.id, recipient.queues)
+                    // await recipient.save()
+                } catch (error) {
+                    console.log(error)
+                }
             }
 
         })

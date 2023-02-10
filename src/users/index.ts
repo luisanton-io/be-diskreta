@@ -19,10 +19,10 @@ usersRouter
     })
     .get("/queue", async (req, res, next) => {
         // inspect(shared.queues)
-        console.log(JSON.stringify({
-            messages: Object.entries(shared.queues).map(([user, data]) => ({ [user]: data.messages.map(m => m.hash) })),
-            status: Object.entries(shared.queues).map(([user, data]) => ({ [user]: data.status.map(s => ({ hash: s.hash, status: s.status })) })),
-        }, null, 2))
+        // console.log(JSON.stringify({
+        //     messages: Object.entries(shared.queues).map(([user, data]) => ({ [user]: data.messages.map(m => m.hash) })),
+        //     status: Object.entries(shared.queues).map(([user, data]) => ({ [user]: data.status.map(s => ({ hash: s.hash, status: s.status })) })),
+        // }, null, 2))
         res.status(204).send()
     })
     .get("/", async (req, res, next) => {

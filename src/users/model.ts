@@ -1,6 +1,7 @@
 import mongoose, { Document } from "mongoose"
 import bcrypt from "bcrypt"
 import { pki } from "node-forge"
+import { makeEmptyQueues } from "../shared"
 
 type UserDocument = User & Document & {
     checkDigest(password: string): Promise<boolean>
@@ -26,6 +27,10 @@ const UserSchema = new mongoose.Schema<UserDocument, UserModel>({
     refreshTokens: {
         type: [String],
         default: []
+    },
+    queues: {
+        type: Object, // avoiding Schema definition for Messages
+        default: makeEmptyQueues() as Object
     }
 })
 
@@ -49,6 +54,7 @@ UserSchema.methods.toJSON = function () {
     delete user.digest
     delete user.__v
     delete user.refreshTokens
+    delete user.queues
 
     return user
 }
