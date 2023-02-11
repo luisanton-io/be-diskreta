@@ -2,7 +2,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import app from "./app";
 import messageStatus from "./events/messageStatus";
-import shared, { makeEmptyQueues, Queues } from "./shared";
+import shared, { makeEmptyQueues } from "./shared";
 import User from "./users/model";
 import jwt from "./util/jwt";
 
@@ -45,7 +45,7 @@ io.on("connection", async socket => {
         socket.emit('dequeue', socketUser.queues, async () => {
 
             await Promise.all(
-                (socketUser.queues as Queues).messages.map(msg =>
+                socketUser.queues.messages.map(msg =>
                     messageStatus(msg, 'delivered')
                 )
             )

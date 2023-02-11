@@ -4,9 +4,12 @@ interface User {
     publicKey: string
     digest?: string,
     refreshTokens: string[],
-    queues: Object
+    queues: Queues
 }
-
+interface Queues {
+    messages: Message[],
+    status: MessageStatusUpdate[]
+}
 interface JWTPayload {
     _id: string
 }

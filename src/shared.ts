@@ -1,10 +1,5 @@
 import { Socket } from "socket.io";
 
-export interface Queues {
-    messages: Message[],
-    status: MessageStatusUpdate[]
-}
-
 interface OnlineUserData {
     socket: Socket
 }
