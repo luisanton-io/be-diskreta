@@ -44,6 +44,7 @@ interface Message {
     }
     timestamp: number,
     hash: string
+    replyingTo?: Message
 }
 
 interface ReceivedMessage extends Message {
