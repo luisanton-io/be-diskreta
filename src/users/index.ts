@@ -72,9 +72,7 @@ usersRouter
             }
 
             await user.update({
-                $pull: {
-                    refreshToken: currentRefreshToken
-                }
+                refreshToken: []
             })
 
             const { token, refreshToken } = await jwt.generatePairFor(user)
