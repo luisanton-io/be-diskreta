@@ -1,5 +1,6 @@
 import { createServer } from "http";
 import { Server } from "socket.io";
+import { ExtendedError } from "socket.io/dist/namespace";
 import app from "./app";
 import messageStatus from "./events/messageStatus";
 import shared, { makeEmptyQueues } from "./shared";
@@ -22,9 +23,8 @@ io.use((socket, next) => {
 
         next()
     } catch (error) {
-        socket.emit("jwt-expired")
+        next(error as ExtendedError)
     }
-
 })
 
 io.on("connection", async socket => {
@@ -99,9 +99,7 @@ io.on("connection", async socket => {
                             "queues.messages": forwardingMessage
                         }
                     })
-                    // (recipient.queues as Queues).messages.push(forwardingMessage);
-                    // console.log(recipient.id, recipient.queues)
-                    // await recipient.save()
+
                 } catch (error) {
                     console.log(error)
                 }
