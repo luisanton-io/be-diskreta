@@ -111,6 +111,10 @@ io.on("connection", async socket => {
             await messageStatus(message, 'read')
         })
 
+        socket.on('typing', ({ chatId, recipient, sender }) => {
+            shared.onlineUsers[recipient._id.toString()]?.socket.emit('typing', { chatId, sender })
+        })
+
         socket.on('disconnect', () => {
             console.log("disconnecting " + socketUser.nick)
             delete shared.onlineUsers[_id]
