@@ -13,23 +13,25 @@ const io = new Server(httpServer, {
     pingTimeout: 60000
 });
 
-io.use((socket, next) => {
-    try {
-
-        const token = socket.handshake.auth.token || socket.handshake.headers.token
-        const { _id } = jwt.verify(token, process.env.JWT_SECRET!) as { _id: string }
-
-        if (!_id) throw new Error()
-
-        next()
-    } catch (error) {
-        next(error as ExtendedError)
-    }
-})
 
 io.on("connection", async socket => {
 
+
     try {
+        socket.use((_, next) => {
+            try {
+
+                const token = socket.handshake.auth.token || socket.handshake.headers.token
+                const { _id } = jwt.verify(token, process.env.JWT_SECRET!) as { _id: string }
+
+                if (!_id) throw new Error()
+
+                next()
+            } catch (error) {
+                next(error as ExtendedError)
+            }
+        })
+
         const { _id } = jwt.verify(socket.handshake.auth.token, process.env.JWT_SECRET!) as JWTPayload
 
         const socketUser = await User.findById(_id)
