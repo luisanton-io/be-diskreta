@@ -29,6 +29,7 @@ io.on("connection", async socket => {
                 next()
             } catch (error) {
                 next(error as ExtendedError)
+                socket.connected && socket.disconnect()
             }
         })
 
@@ -58,7 +59,7 @@ io.on("connection", async socket => {
         })
 
         socket.on("out-msg", async (payload: OutgoingMessage, ack) => {
-            console.log({ 'Received message': payload })
+            // console.log({ 'Received message': payload })
 
             const recipientId = payload.for
 
