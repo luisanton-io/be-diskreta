@@ -2,6 +2,10 @@ import express from "express";
 import cors, { CorsOptions } from "cors";
 import genericErrorHandler from "./middlewares/errorHandler";
 import usersRouter from "./users";
+import jwt from "./util/jwt";
+import User from "./users/model";
+import { makeEmptyQueues } from "./shared";
+import messageStatus from "./events/messageStatus";
 
 const app = express();
 
@@ -29,6 +33,31 @@ apiRouter.use('/users', usersRouter)
 
 apiRouter.get('/test', (req, res) => {
     res.status(200).send({ message: "Hello, World!" })
+})
+apiRouter.get('/queues', async (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1]
+        if (!token) throw new Error("No token provided")
+
+        const { _id } = jwt.verify(token, process.env.JWT_SECRET!) as { _id: string }
+        const user = await User.findById(_id)
+
+        if (!user) throw new Error("User not found")
+
+        await Promise.all(
+            user.queues.messages.map(msg =>
+                messageStatus(msg, 'delivered')
+            )
+        )
+
+        await user.updateOne({
+            queues: makeEmptyQueues()
+        })
+
+        res.status(200).send(user.queues)
+    } catch (error) {
+        res.status(400).send({ message: (error as Error).message })
+    }
 })
 
 apiRouter.use(genericErrorHandler)

@@ -45,19 +45,6 @@ io.on("connection", async socket => {
 
         shared.onlineUsers[_id] = { socket };
 
-        socket.emit('dequeue', socketUser.queues, async () => {
-
-            await Promise.all(
-                socketUser.queues.messages.map(msg =>
-                    messageStatus(msg, 'delivered')
-                )
-            )
-
-            await socketUser.updateOne({
-                queues: makeEmptyQueues()
-            })
-        })
-
         socket.on("out-msg", async (payload: OutgoingMessage, ack) => {
             // console.log({ 'Received message': payload })
 
