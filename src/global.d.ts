@@ -3,7 +3,7 @@ interface User {
     nick: string
     publicKey: string
     digest?: string,
-    refreshTokens: string[],
+    refreshToken: string,
     queues: Queues
 }
 interface Queues {

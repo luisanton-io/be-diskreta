@@ -24,9 +24,8 @@ const UserSchema = new mongoose.Schema<UserDocument, UserModel>({
         type: String,
         required: true
     },
-    refreshTokens: {
-        type: [String],
-        default: []
+    refreshToken: {
+        type: String
     },
     queues: {
         type: Object, // avoiding Schema definition for Messages
