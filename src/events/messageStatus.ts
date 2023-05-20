@@ -6,7 +6,8 @@ export default async function messageStatus(msg: OutgoingMessageWithSender | Rec
         chatId: msg.chatId,
         hash: msg.hash,
         recipientId: msg.for,
-        status
+        status,
+        timestamp: Date.now()
     }
     const { socket } = shared.onlineUsers[msg.sender._id.toString()] || {}
 

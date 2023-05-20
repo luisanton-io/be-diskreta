@@ -75,7 +75,8 @@ interface MessageStatusUpdate {
     chatId: string,
     hash: string,
     recipientId: string,
-    status: OutgoingMessageStatus
+    status: OutgoingMessageStatus,
+    timestamp: number
 }
 
 interface MessageAck {
