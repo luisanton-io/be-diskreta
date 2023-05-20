@@ -6,6 +6,7 @@ import messageStatus from "./events/messageStatus";
 import shared, { makeEmptyQueues } from "./shared";
 import User from "./users/model";
 import jwt from "./util/jwt";
+import messageReaction from "./events/messageReaction";
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -41,7 +42,7 @@ io.on("connection", async socket => {
 
         console.log("Connected " + socketUser.nick)
 
-        shared.onlineUsers[_id]?.socket.disconnect()
+        // shared.onlineUsers[_id]?.socket.disconnect()
 
         shared.onlineUsers[_id] = { socket };
 
@@ -100,6 +101,8 @@ io.on("connection", async socket => {
         socket.on("read-msg", async (message: ReceivedMessage) => {
             await messageStatus(message, 'read')
         })
+
+        socket.on("out-reaction", messageReaction)
 
         socket.on('typing', ({ chatId, recipient, sender }) => {
             shared.onlineUsers[recipient._id.toString()]?.socket.emit('typing', { chatId, sender })

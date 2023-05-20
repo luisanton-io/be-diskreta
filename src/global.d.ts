@@ -83,3 +83,11 @@ interface MessageAck {
     error?: string
     hash?: string
 }
+
+interface ReactionPayload {
+    chatId: string,
+    hash: string,
+    senderId: string, // user id
+    recipientId: string, // user id
+    reaction: string
+}
