@@ -75,10 +75,19 @@ interface MessageStatusUpdate {
     chatId: string,
     hash: string,
     recipientId: string,
-    status: OutgoingMessageStatus
+    status: OutgoingMessageStatus,
+    timestamp: number
 }
 
 interface MessageAck {
     error?: string
     hash?: string
+}
+
+interface ReactionPayload {
+    chatId: string,
+    hash: string,
+    senderId: string, // user id
+    recipientId: string, // user id
+    reaction: string
 }
