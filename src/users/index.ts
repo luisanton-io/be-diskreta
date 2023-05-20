@@ -67,16 +67,11 @@ usersRouter
 
             const user = await User.findById(_id)
 
-            if (!user || ![...user.refreshTokens].includes(currentRefreshToken)) {
+            if (!user || user.refreshToken !== currentRefreshToken) {
                 return next(createHttpError(401, "Invalid refresh token"))
             }
 
-            await user.update({
-                refreshToken: []
-            })
-
             const { token, refreshToken } = await jwt.generatePairFor(user)
-
 
             res.status(201).send({ user, token, refreshToken })
         } catch (error) {

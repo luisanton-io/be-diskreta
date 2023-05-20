@@ -16,16 +16,17 @@ class JWT {
     public generateRefreshFor = async (user: User & Document) => {
         const refreshToken = this._generate(user, process.env.JWT_REFRESH_SECRET!, '99y')
 
-        user.refreshTokens.push(refreshToken)
+        user.refreshToken = refreshToken
         await user.save()
 
         return refreshToken
     }
 
     public generatePairFor = async (user: User & Document) => {
-        const [token, refreshToken] = [this.generateFor(user), await this.generateRefreshFor(user)]
-
-        return { token, refreshToken }
+        return {
+            token: this.generateFor(user),
+            refreshToken: await this.generateRefreshFor(user)
+        }
     }
 
     public verify = jwt.verify
