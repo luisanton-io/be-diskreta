@@ -1,7 +1,9 @@
+import { Document } from "mongoose";
 import { Socket } from "socket.io";
 
 interface OnlineUserData {
     socket: Socket
+    user: User & Document
 }
 interface Shared {
     onlineUsers: Record<User["_id"], OnlineUserData>,

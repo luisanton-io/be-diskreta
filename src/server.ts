@@ -7,44 +7,61 @@ import shared, { makeEmptyQueues } from "./shared";
 import User from "./users/model";
 import jwt from "./util/jwt";
 import messageReaction from "./events/messageReaction";
+import { DefaultEventsMap } from "socket.io/dist/typed-events";
+import { Document } from "mongoose";
+
+
+type ClientToServerEvents = DefaultEventsMap
+type ServerToClientEvents = DefaultEventsMap
+type InterServerEvents = DefaultEventsMap
+interface SocketData {
+    user: User & Document
+}
 
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
+const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
     maxHttpBufferSize: 1e8,
     pingTimeout: 60000
 });
 
+io.use(async (socket, next) => {
+    try {
+        const token = socket.handshake.auth.token || socket.handshake.headers.token
 
+        const { _id } = jwt.verify(token, process.env.JWT_SECRET!) as { _id: string }
+
+        if (!_id) throw new Error("Invalid token")
+
+        let onlineUser = shared.onlineUsers[_id]
+
+        if (!onlineUser) {
+            const user = await User.findById(_id)
+            if (!user) throw new Error("User not found")
+
+            console.log("Connected user: " + user.nick)
+            onlineUser = shared.onlineUsers[_id] = { user, socket }
+
+        } else if (onlineUser.socket.id !== socket.id) {
+            onlineUser.socket.disconnect()
+            onlineUser.socket = socket
+        }
+
+        socket.data.user = onlineUser.user
+
+        next()
+    } catch (error) {
+        console.log(error)
+        next(error as ExtendedError)
+        socket.connected && socket.disconnect()
+    }
+})
 io.on("connection", async socket => {
 
-
     try {
-        socket.use((_, next) => {
-            try {
 
-                const token = socket.handshake.auth.token || socket.handshake.headers.token
-                const { _id } = jwt.verify(token, process.env.JWT_SECRET!) as { _id: string }
-
-                if (!_id) throw new Error()
-
-                next()
-            } catch (error) {
-                next(error as ExtendedError)
-                socket.connected && socket.disconnect()
-            }
-        })
-
-        const { _id } = jwt.verify(socket.handshake.auth.token, process.env.JWT_SECRET!) as JWTPayload
-
-        const socketUser = await User.findById(_id)
-
-        if (!socketUser) throw new Error("User not found");
-
-        console.log("Connected " + socketUser.nick)
-
-        shared.onlineUsers[_id]?.socket.disconnect()
-
-        shared.onlineUsers[_id] = { socket };
+        // Can't check here for duplicate socket, because while the new 
+        // socket is reading from DB the User document, the old socket is
+        // still connected and will receive the message.
 
         socket.on("out-msg", async (payload: OutgoingMessage, ack) => {
             // console.log({ 'Received message': payload })
@@ -55,7 +72,7 @@ io.on("connection", async socket => {
 
             const outgoingMessage: OutgoingMessageWithSender = {
                 ...payload,
-                sender: socketUser.toJSON() as User // avoids a malicious user with a legit JWT token to impersonate another user.
+                sender: socket.data.user!.toJSON() // avoids a malicious user with a legit JWT token to impersonate another user.
             }
 
             const forwardingMessage: ReceivedMessage = {
@@ -75,7 +92,7 @@ io.on("connection", async socket => {
                         }
 
                         await messageStatus(outgoingMessage, 'delivered')
-                        console.log("received ack for ", hash)
+                        // console.log("received ack for ", hash)
                         resolve(true)
                     })
                 }).catch(console.error)
@@ -104,12 +121,13 @@ io.on("connection", async socket => {
 
         socket.on("out-reaction", messageReaction)
 
-        socket.on('typing', ({ chatId, recipient, sender }) => {
-            shared.onlineUsers[recipient._id.toString()]?.socket.emit('typing', { chatId, sender })
+        socket.on("typing", ({ chatId, recipient, sender }) => {
+            shared.onlineUsers[recipient._id.toString()]?.socket.emit("typing", { chatId, sender })
         })
 
-        socket.on('disconnect', () => {
-            console.log("disconnecting " + socketUser.nick)
+        socket.on("disconnect", () => {
+            const { nick, _id } = socket.data.user!
+            console.log("Disconnecting " + nick)
             delete shared.onlineUsers[_id]
         })
 
