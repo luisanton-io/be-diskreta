@@ -42,7 +42,7 @@ io.on("connection", async socket => {
 
         console.log("Connected " + socketUser.nick)
 
-        // shared.onlineUsers[_id]?.socket.disconnect()
+        shared.onlineUsers[_id]?.socket.disconnect()
 
         shared.onlineUsers[_id] = { socket };
 
