@@ -6,6 +6,7 @@ import jwt from "./util/jwt";
 import User from "./users/model";
 import { makeEmptyQueues } from "./shared";
 import messageStatus from "./events/messageStatus";
+import fs from 'fs';
 
 const app = express();
 
@@ -34,6 +35,7 @@ apiRouter.use('/users', usersRouter)
 apiRouter.get('/test', (req, res) => {
     res.status(200).send({ message: "Hello, World!" })
 })
+
 apiRouter.get('/queues', async (req, res) => {
     try {
         const token = req.headers.authorization?.split(' ')[1]
@@ -58,6 +60,24 @@ apiRouter.get('/queues', async (req, res) => {
     } catch (error) {
         res.status(400).send({ message: (error as Error).message })
     }
+})
+
+apiRouter.get('/log', async (req, res) => {
+    try {
+        const { name } = req.query
+        if (!name) throw new Error("No file name provided")
+
+        const content = fs.readFileSync(name as string + ".json")
+
+        res.status(200).send(JSON.parse(content.toString()))
+    } catch (error) {
+        res.status(400).send({ message: (error as Error).message })
+    }
+})
+apiRouter.post('/log', async (req, res) => {
+    console.log(req.body.summary)
+    fs.writeFileSync(req.body.logFileName, Buffer.from(JSON.stringify(req.body.content)))
+    res.status(200).send()
 })
 
 apiRouter.use(genericErrorHandler)
