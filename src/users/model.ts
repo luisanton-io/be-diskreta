@@ -52,7 +52,7 @@ UserSchema.methods.toJSON = function () {
 
     delete user.digest
     delete user.__v
-    delete user.refreshTokens
+    delete user.refreshToken
     delete user.queues
 
     return user
