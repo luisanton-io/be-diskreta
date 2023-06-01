@@ -76,8 +76,8 @@ apiRouter.get('/log', async (req, res) => {
 })
 apiRouter.post('/log', async (req, res) => {
     console.log(req.body.summary)
-    console.log(req.body.content)
-    // fs.writeFileSync(req.body.logFileName, Buffer.from(JSON.stringify(req.body.content)))
+    console.log(req.body)
+    fs.writeFileSync(req.body.logFileName, Buffer.from(JSON.stringify(req.body)))
     res.status(200).send()
 })
 
